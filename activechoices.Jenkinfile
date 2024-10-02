@@ -1,0 +1,73 @@
+choiceArray = [ "patch" , "minor" , "major" ]
+properties([
+    parameters([
+        choice(choices: choiceArray.collect { "$it\n" }.join(' ') ,
+                description: 'Building choices with array of values',
+                name: 'PatchType'),
+
+        [$class: 'ChoiceParameter',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Select a choice',
+            filterLength: 1,
+            filterable: false,
+            name: 'component',
+            script: [$class: 'GroovyScript',
+                fallbackScript: [classpath: [], sandbox: false, script: 'return ["Could not get component"]'],
+                script: [classpath: [], sandbox: false, 
+                    script: """
+                         import groovy.json.JsonSlurperClassic
+                            def list = []
+                            def connection = new URL("https://filesamples.com/samples/code/json/sample4.json").openConnection() as HttpURLConnection
+                            connection.setRequestProperty('Accept', 'application/json')
+                            def json = connection.inputStream.text
+                            data = new JsonSlurperClassic().parseText(json)
+                            data.people.each { component ->
+                                list += component.lastName	
+                            }
+                            return list
+                    """
+                ]]],
+
+        activeChoice(
+            choiceType: 'PT_SINGLE_SELECT',
+            filterLength: 1,
+            filterable: false,
+            description: 'Building activechoices with PT_SINGLE_SELECT',
+            name: 'Env',
+            script: groovyScript(
+                fallbackScript: [
+                    classpath: [],
+                    oldScript: '',
+                    sandbox: true,
+                    script: "return ['Could not get the environments']"
+                ],
+                script: [
+                    classpath: [],
+                    oldScript: '',
+                    sandbox: true,
+                    script: "return ['dev', 'stage', 'prod']"
+                ]
+            )
+        )
+    ])
+])
+
+
+
+pipeline {
+    agent any
+
+    stages {
+        stage("Patch Type") {
+            steps {
+                sh "echo Selected component  ${params.PatchType}"
+            }
+        }
+        stage("Environment") {
+            steps {
+                sh "echo Selected version  ${params.Env}"
+            }
+        }
+    }
+}
+
